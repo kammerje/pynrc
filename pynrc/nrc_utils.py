@@ -4108,7 +4108,12 @@ def coron_trans(name, module='A', pixscale=None, fov=20, nd_squares=True):
         _log.warn("There are NaNs in the BLC mask - correcting to zero. (DEBUG LATER?)")
         transmission[np.where(np.isfinite(transmission) == False)] = 0
 
-    return transmission
+    if (name in ['MASK335R', 'MASK430R', 'MASKLWB']):
+        return np.fliplr(transmission)
+    elif (name in ['MASK210R', 'MASKSWB']):
+        return np.flipud(transmission)
+    else:
+        raise UserWarning(name+' is an unknown coronagraphic mask')
 
 
 def build_mask(module='A', pixscale=0.03):

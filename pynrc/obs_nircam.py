@@ -444,7 +444,10 @@ class obs_hci(nrc_hci):
         if (wind_mode=='FULL') and (self.channel=='SW'):
             raise NotImplementedError('SW Full Frame not yet implemented.')
 
-        self._bar_offset = None
+        try:
+            self._bar_offset = kwargs['bar_offset']
+        except:
+            self._bar_offset = None
 
         # Spectral models
         self.sp_sci = sp_sci
@@ -1712,7 +1715,7 @@ class obs_hci(nrc_hci):
 
     def gen_slope_image(self, PA=0, exclude_disk=False, exclude_planets=False,
         exclude_noise=False, zfact=None, do_ref=False, do_roll2=False, im_star=None, 
-        wfe_drift0=0, wfe_ref_drift=None, wfe_roll_drift=None, **kwargs):
+        wfe_drift0=0, wfe_ref_drift=None, wfe_roll_drift=None, dither=None, **kwargs):
         """Create slope image of observation
         
         Beware that stellar position (centered on a pixel) will likely not
@@ -1741,6 +1744,8 @@ class obs_hci(nrc_hci):
         im_star : ndarray or None
             Pass a precomputed slope image of the stellar source already
             positioned at it's correct location.
+        dither : tuple of float
+            X and Y offsets in mas.
         
 
         Keyword Args
@@ -1798,7 +1803,14 @@ class obs_hci(nrc_hci):
 
         # Stellar PSF doesn't rotate
         if im_star is None:
-            im_star = self.gen_psf(sp, return_oversample=False, wfe_drift=wfe_drift)
+            if (dither is None):
+                im_star = self.gen_psf(sp, return_oversample=False, wfe_drift=wfe_drift)
+            else:
+                delx -= dither[0] / 1e3 / self.pixelscale # pix
+                dely += dither[1] / 1e3 / self.pixelscale # pix
+                offset_r = np.sqrt((dither[0] / 1e3)**2+(dither[1] / 1e3)**2) # arcsec
+                offset_theta = np.rad2deg(np.arctan2(dither[0], dither[1])) # deg
+                im_star = self.gen_offset_psf(offset_r, offset_theta, sp, return_oversample=False, wfe_drift=wfe_drift)
             im_star = pad_or_cut_to_size(im_star, image_shape)
             im_star = fshift(im_star, delx=delx, dely=dely, pad=True)
 

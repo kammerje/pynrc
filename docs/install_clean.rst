@@ -98,7 +98,7 @@ WebbPSF Data Files
 --------------------------
 
 For the user's convenience, WebbPSF data files can be found here: 
-`webbpsf-data-0.6.0.tar.gz <http://mips.as.arizona.edu/~jleisenring/pynrc/webbpsf-data-0.6.0.tar.gz>`_  [approx. 240 MB]
+`webbpsf-data-0.9.0.tar.gz <https://stsci.box.com/shared/static/qcptcokkbx7fgi3c00w2732yezkxzb99.gz>`_  [approx. 240 MB]
 Follow the same procedure as with the Pysynphot data files, 
 setting the ``WEBBPSF_PATH`` environment variable to point 
 towards your ``webbpsf-data`` directory.
@@ -140,6 +140,9 @@ Installing pyNRC
 
 Installing with pip
 --------------------
+
+.. caution::
+    This did not work for me. Try installing from source.
 
 You can install the ``pynrc`` package through pip::
 
@@ -186,7 +189,7 @@ also the location that PSF coefficients will be saved to during
 normal operations of ``pynrc``.
 
 1. Download the following file: 
-   `pynrc_data_v0.6.1.tar.gz <http://mips.as.arizona.edu/~jleisenring/pynrc/pynrc_data_v0.6.1.tar.gz>`_  [approx. 2.3 GB]
+   `pynrc_data_v0.9.0.tar.gz <http://mips.as.arizona.edu/~jleisenring/pynrc/pynrc_data_0.9.0.tar.gz>`_  [approx. 2.3 GB]
 2. Untar into a directory of your choosing.
 3. Set the environment variable ``PYNRC_PATH`` to point to that directory. 
    For example, in .bashrc shell file, add::

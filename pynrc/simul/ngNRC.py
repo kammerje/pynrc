@@ -280,196 +280,219 @@ def SCAnoise(det=None, scaid=None, params=None, caldir=None, file_out=None,
 
     return hdu
 
-# def slope_to_ramp(det, im_slope=None, out_ADU=False, file_out=None, 
-#                   filter=None, pupil=None, obs_time=None, targ_name=None,
-#                   DMS=True, dark=True, bias=True, det_noise=True,
-#                   return_results=True):
-#     """Convert slope image to simulated ramp
+def slope_to_ramp(det, im_slope=None, out_ADU=False, file_out=None, 
+                  filter=None, pupil=None, obs_time=None, targ_name=None,
+                  DMS=True, dark=True, bias=True, det_noise=True,
+                  return_results=True):
+    """Convert slope image to simulated ramp
     
-#     For a given detector operations class and slope image, create a
-#     ramp integration using Poisson noise and detector noise. 
+    For a given detector operations class and slope image, create a
+    ramp integration using Poisson noise and detector noise. 
 
-#     Currently, this image simulator does NOT take into account:
+    Currently, this image simulator does NOT take into account:
     
-#         - QE variations across a pixel's surface
-#         - Intrapixel Capacitance (IPC)
-#         - Post-pixel Coupling (PPC) due to ADC "smearing"
-#         - Pixel non-linearity
-#         - Persistence/latent image
-#         - Optical distortions
-#         - Zodiacal background roll off for grism edges
-#         - Telescope jitter
-#         - Cosmic Rays
+        - QE variations across a pixel's surface
+        - Intrapixel Capacitance (IPC)
+        - Post-pixel Coupling (PPC) due to ADC "smearing"
+        - Pixel non-linearity
+        - Persistence/latent image
+        - Optical distortions
+        - Zodiacal background roll off for grism edges
+        - Telescope jitter
+        - Cosmic Rays
 
-#     Parameters
-#     ----------
-#     det : object
-#         Detector operations object.
-#     im_slope : ndarray
-#         Idealized slope image.
+    Parameters
+    ----------
+    det : object
+        Detector operations object.
+    im_slope : ndarray
+        Idealized slope image.
 
-#     out_ADU : bool
-#         If true, divide by gain and convert to 16-bit UINT.
-#     file_out : str
-#         Name (including directory) to save FITS file
-#     filter : str
-#         Name of filter element for header
-#     pupil : str
-#         Name of pupil element for header
-#     obs_time : datetime 
-#         Specifies when the observation was considered to be executed.
-#         If not specified, then it will choose the current time.
-#         This must be a datetime object:
+    out_ADU : bool
+        If true, divide by gain and convert to 16-bit UINT.
+    file_out : str
+        Name (including directory) to save FITS file
+    filter : str
+        Name of filter element for header
+    pupil : str
+        Name of pupil element for header
+    obs_time : datetime 
+        Specifies when the observation was considered to be executed.
+        If not specified, then it will choose the current time.
+        This must be a datetime object:
             
-#             >>> datetime.datetime(2016, 5, 9, 11, 57, 5, 796686)
+            >>> datetime.datetime(2016, 5, 9, 11, 57, 5, 796686)
             
-#         This information is added to the header.
-#     targ_name : str
-#         Target name (optional)
-#     DMS : bool
-#         Package the data in the format used by DMS?
-#     dark : bool
-#         Include the dark current?
-#     bias : bool
-#         Include the bias frame?
-#     det_noise: bool
-#         Include detector noise components? If set to False, then only 
-#         perform Poisson noise. Darks and biases are also excluded.
-#     """
+        This information is added to the header.
+    targ_name : str
+        Target name (optional)
+    DMS : bool
+        Package the data in the format used by DMS?
+    dark : bool
+        Include the dark current?
+    bias : bool
+        Include the bias frame?
+    det_noise: bool
+        Include detector noise components? If set to False, then only 
+        perform Poisson noise. Darks and biases are also excluded.
+    """
     
-#     if (det_noise==False) and (im_slope is None):
-#         _log.warning('No input slope image and det_noise=False. Nothing to return.')
-#         return
+    if (det_noise==False) and (im_slope is None):
+        _log.warning('No input slope image and det_noise=False. Nothing to return.')
+        return
 
-#     #import ngNRC
-#     # MULTIACCUM ramp information
-#     ma  = det.multiaccum
+    #import ngNRC
+    # MULTIACCUM ramp information
+    ma  = det.multiaccum
 
-#     xpix = det.xpix
-#     ypix = det.ypix
+    xpix = det.xpix
+    ypix = det.ypix
 
-#     nd1     = ma.nd1
-#     nd2     = ma.nd2
-#     nf      = ma.nf
-#     ngroup  = ma.ngroup
-#     t_frame = det.time_frame
+    nd1     = ma.nd1
+    nd2     = ma.nd2
+    nf      = ma.nf
+    ngroup  = ma.ngroup
+    t_frame = det.time_frame
 
-#     # Number of total frames up the ramp (including drops)
-#     naxis3 = nd1 + ngroup*nf + (ngroup-1)*nd2
+    # Number of total frames up the ramp (including drops)
+    naxis3 = nd1 + ngroup*nf + (ngroup-1)*nd2
 
-#     if im_slope is not None:
-#         # Set reference pixels' slopes equal to 0
-#         w = det.ref_info
-#         if w[0] > 0: # lower
-#             im_slope[:w[0],:] = 0
-#         if w[1] > 0: # upper
-#             im_slope[-w[1]:,:] = 0
-#         if w[2] > 0: # left
-#             im_slope[:,:w[2]] = 0
-#         if w[3] > 0: # right
-#             im_slope[:,-w[3]:] = 0
+    nint = ma.nint
+    imgs = []
+    zeroimgs = []
+    for i in range(nint):
+    
+        if im_slope is not None:
+            # Set reference pixels' slopes equal to 0
+            w = det.ref_info
+            if w[0] > 0: # lower
+                im_slope[:w[0],:] = 0
+            if w[1] > 0: # upper
+                im_slope[-w[1]:,:] = 0
+            if w[2] > 0: # left
+                im_slope[:,:w[2]] = 0
+            if w[3] > 0: # right
+                im_slope[:,-w[3]:] = 0
+    
+            # Count accumulation for a single frame
+            frame = im_slope * t_frame
+            # Add Poisson noise at each frame step
+            sh0, sh1 = im_slope.shape
+            new_shape = (naxis3, sh0, sh1)
+            ramp = np.random.poisson(lam=frame, size=new_shape)#.astype(np.float64)
+            # Perform cumulative sum in place
+            np.cumsum(ramp, axis=0, out=ramp)
+            
+            # Truncate anything above well level
+            well_max = det.well_level
+            ramp[ramp>well_max] = well_max
+        else:
+            ramp = 0
+    
+        if det_noise==False:
+            hdu = fits.PrimaryHDU(ramp)
+        else:
+            # Create dark ramp with read noise and 1/f noise
+            hdu = SCAnoise(det=det, dark=dark, bias=bias)
+            if (det.detname in ['NRCALONG']):
+                hdu.data = np.flip(hdu.data, axis=2)
+            elif (det.detname in ['NRCA2', 'NRCA4']):
+                hdu.data = np.flip(hdu.data, axis=1)
+            else:
+                raise UserWarning(det.detname+' is an unknown detector')
+            # Add signal ramp to dark ramp
+            if im_slope is not None:
+                hdu.data += ramp.reshape(hdu.data.shape) 
+        # Update header information
+        hdu.header = det.make_header(filter, pupil, obs_time, targ_name=targ_name, DMS=DMS)
+        data = hdu.data
+    
+        #### Add in IPC (TBI) ####
+    
+        # Get rid of any drops at the beginning (nd1)
+        if nd1>0: data = data[nd1:,:,:]
+    
+        # Convert to ADU (16-bit UINT)
+        if out_ADU:
+            gain = det.gain
+            data = data / gain
+            data[data < 0] = 0
+            data[data >= 2**16] = 2**16 - 1
+            data = data.astype('uint16')
+            hdu.header['UNITS'] = 'ADU'
+    
+        ## Save the first frame (so-called ZERO frame) for the zero frame extension
+        zeroimgs += [deepcopy(data[0,:,:])]
+    
+        # Remove drops and average grouped data
+        if nf>1 or nd2>0:
+            # Trailing drop frames already excluded, so need to pull off last group of avg'ed frames
+            data_end = data[-nf:,:,:].mean(axis=0) if nf>1 else data[-1:,:,:]
+            data_end = data_end.reshape([1,ypix,xpix])
+    
+            # Only care about first (n-1) groups for now
+            # Last group is handled separately
+            data = data[:-nf,:,:]
+    
+            # Reshape for easy group manipulation
+            data = data.reshape([-1,nf+nd2,ypix,xpix])
+    
+            # Trim off the dropped frames (nd2)
+            if nd2>0: data = data[:,:nf,:,:]
+    
+            # Average the frames within groups
+            # In reality, the 16-bit data is bit-shifted
+            data = data.reshape([-1,ypix,xpix]) if nf==1 else data.mean(axis=1)
+    
+            # Add back the last group (already averaged)
+            data = np.append(data,data_end,axis=0)
+    
+        # Convert to ADU (16-bit UINT)
+        if out_ADU:
+            data[data < 0] = 0
+            data[data >= 2**16] = 2**16 - 1
+            data = data.astype('uint16')
+            hdu.header['UNITS'] = 'ADU'
+    
+        imgs += [data]
 
-#         # Count accumulation for a single frame
-#         frame = im_slope * t_frame
-#         # Add Poisson noise at each frame step
-#         sh0, sh1 = im_slope.shape
-#         new_shape = (naxis3, sh0, sh1)
-#         ramp = np.random.poisson(lam=frame, size=new_shape)#.astype(np.float64)
-#         # Perform cumulative sum in place
-#         np.cumsum(ramp, axis=0, out=ramp)
+    imgs = np.array(imgs)
+    zeroimgs = np.array(zeroimgs)
+    
+    if file_out is not None:
+        hdu.header['FILENAME'] = os.path.split(file_out)[1]
+    
+    if DMS == True:
+        primHDU = fits.PrimaryHDU(header=hdu.header)
+        primHDU.name = 'PRIMARY'
+        sciHDU = fits.ImageHDU(data=imgs, do_not_scale_image_data=True)
+        sciHDU.name = 'SCI'
+        sciHDU.header.comments['NAXIS1'] = 'length of first data axis (#columns)'
+        sciHDU.header.comments['NAXIS2'] = 'length of second data axis (#rows)'
+        if sciHDU.header['NAXIS'] > 2:
+            sciHDU.header.comments['NAXIS3'] = 'length of third data axis (#groups/integration '
+        if sciHDU.header['NAXIS'] > 3:
+            sciHDU.header.comments['NAXIS4'] = 'length of fourth data axis (#integrations)  '
+        sciHDU.header['BZERO'] = (32768, 'physical value for an array value of zero')
+        sciHDU.header['BUNIT'] = ('DN', 'physical units of the data array values')
         
-#         # Truncate anything above well level
-#         well_max = det.well_level
-#         ramp[ramp>well_max] = well_max
-#     else:
-#         ramp = 0
-
-#     if det_noise==False:
-#         hdu = fits.PrimaryHDU(ramp)
-#     else:
-#         # Create dark ramp with read noise and 1/f noise
-#         hdu = SCAnoise(det=det, dark=dark, bias=bias)
-#         # Add signal ramp to dark ramp
-#         if im_slope is not None:
-#             hdu.data += ramp.reshape(hdu.data.shape) 
-#     # Update header information
-#     hdu.header = det.make_header(filter, pupil, obs_time, targ_name=targ_name, DMS=DMS)
-#     data = hdu.data
-
-#     #### Add in IPC (TBI) ####
-
-#     # Get rid of any drops at the beginning (nd1)
-#     if nd1>0: data = data[nd1:,:,:]
-
-#     # Convert to ADU (16-bit UINT)
-#     if out_ADU:
-#         gain = det.gain
-#         data = data / gain
-#         data[data < 0] = 0
-#         data[data >= 2**16] = 2**16 - 1
-#         data = data.astype('uint16')
-#         hdu.header['UNITS'] = 'ADU'
-
-#     ## Save the first frame (so-called ZERO frame) for the zero frame extension
-#     zeroData = deepcopy(data[0,:,:])
-
-#     # Remove drops and average grouped data
-#     if nf>1 or nd2>0:
-#         # Trailing drop frames already excluded, so need to pull off last group of avg'ed frames
-#         data_end = data[-nf:,:,:].mean(axis=0) if nf>1 else data[-1:,:,:]
-#         data_end = data_end.reshape([1,ypix,xpix])
-
-#         # Only care about first (n-1) groups for now
-#         # Last group is handled separately
-#         data = data[:-nf,:,:]
-
-#         # Reshape for easy group manipulation
-#         data = data.reshape([-1,nf+nd2,ypix,xpix])
-
-#         # Trim off the dropped frames (nd2)
-#         if nd2>0: data = data[:,:nf,:,:]
-
-#         # Average the frames within groups
-#         # In reality, the 16-bit data is bit-shifted
-#         data = data.reshape([-1,ypix,xpix]) if nf==1 else data.mean(axis=1)
-
-#         # Add back the last group (already averaged)
-#         data = np.append(data,data_end,axis=0)
-
-#     hdu.data = data
-    
-#     if file_out is not None:
-#         hdu.header['FILENAME'] = os.path.split(file_out)[1]
-    
-#     if DMS == True:
-#         primHDU = fits.PrimaryHDU(header=hdu.header)
-#         primHDU.name = 'PRIMARY'
-#         sciHDU = fits.ImageHDU(data=hdu.data)
-#         sciHDU.name = 'SCI'
-#         sciHDU.header.comments['NAXIS1'] = 'length of first data axis (#columns)'
-#         sciHDU.header.comments['NAXIS2'] = 'length of second data axis (#rows)'
-#         if sciHDU.header['NAXIS'] > 2:
-#             sciHDU.header.comments['NAXIS3'] = 'length of third data axis (#groups/integration '
-#         if sciHDU.header['NAXIS'] > 3:
-#             sciHDU.header.comments['NAXIS4'] = 'length of fourth data axis (#integrations)  '
-#         sciHDU.header['BZERO'] = (32768, 'physical value for an array value of zero')
-#         sciHDU.header['BUNIT'] = ('DN', 'physical units of the data array values')
+        zerHDU = fits.ImageHDU(data=zeroimgs, do_not_scale_image_data=True)
+        zerHDU.name = 'ZEROFRAME'
+        zerHDU.header.comments['NAXIS1'] = 'length of first data axis (#columns)'
+        zerHDU.header.comments['NAXIS2'] = 'length of second data axis (#rows)'
+        sciHDU.header['BZERO'] = (32768, 'physical value for an array value of zero')
+        sciHDU.header['BUNIT'] = ('DN', 'physical units of the data array values')
         
-#         zerHDU = fits.ImageHDU(data=zeroData)
-#         zerHDU.name = 'ZEROFRAME'
-#         zerHDU.header.comments['NAXIS1'] = 'length of first data axis (#columns)'
-#         zerHDU.header.comments['NAXIS2'] = 'length of second data axis (#rows)'
-        
-#         outHDU = fits.HDUList([primHDU,sciHDU,zerHDU])
-#     else:
-#         outHDU = hdu
+        outHDU = fits.HDUList([primHDU,sciHDU,zerHDU])
+    else:
+        outHDU = hdu
     
-#     if file_out is not None:
-#         outHDU.writeto(file_out, overwrite='True')
+    if file_out is not None:
+        outHDU.writeto(file_out, overwrite='True')
     
-#     # Only return outHDU if return_results=True
-#     if return_results: 
-#         return outHDU
+    # Only return outHDU if return_results=True
+    if return_results: 
+        return outHDU
 
 def slope_to_ramps(det, dark_cal_obj, im_slope=None, filter=None, pupil=None, 
                    targ_name=None, obs_time=None, file_out=None, 

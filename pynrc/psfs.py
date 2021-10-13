@@ -438,7 +438,7 @@ def gen_psf_coeff(filter_or_bp, pupil=None, mask=None, module='A',
         inst.detector_position = detector_position
 
     # Print aperture and detector info
-    _log.debug(inst.aperturename, inst.detector, inst.detector_position)
+    # _log.debug(inst.aperturename, inst.detector, inst.detector_position)
 
     # Telescope Pupil
     if tel_pupil is not None:
