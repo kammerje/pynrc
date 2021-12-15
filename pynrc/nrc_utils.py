@@ -38,7 +38,7 @@ from astropy.time import Time
 # from astropy import units
 
 #from scipy.optimize import least_squares#, leastsq
-#from scipy.ndimage import fourier_shift
+from scipy.ndimage import shift
 from scipy.interpolate import griddata, RegularGridInterpolator, interp1d
 from numpy.polynomial import legendre
 
@@ -4107,11 +4107,19 @@ def coron_trans(name, module='A', pixscale=None, fov=20, nd_squares=True):
     if not np.isfinite(transmission.sum()):
         _log.warn("There are NaNs in the BLC mask - correcting to zero. (DEBUG LATER?)")
         transmission[np.where(np.isfinite(transmission) == False)] = 0
-
+    
     if (name in ['MASK335R', 'MASK430R', 'MASKLWB']):
-        return np.fliplr(transmission)
+        transmission = np.fliplr(transmission)
+        sh = (-1., 0.5)
+        transmission = shift(transmission, sh, order=1, mode='nearest')
+        transmission = np.abs(transmission)
+        return transmission
     elif (name in ['MASK210R', 'MASKSWB']):
-        return np.flipud(transmission)
+        transmission = np.flipud(transmission)
+        sh = (0., -0.5)
+        transmission = shift(transmission, sh, order=1, mode='nearest')
+        transmission = np.abs(transmission)
+        return transmission
     else:
         raise UserWarning(name+' is an unknown coronagraphic mask')
 
