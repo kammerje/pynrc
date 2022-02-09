@@ -12,6 +12,8 @@ from .nrc_utils import *
 from .maths.image_manip import *
 from .maths.coords import *
 
+from scipy.ndimage import shift
+
 import logging
 _log = logging.getLogger('pynrc')
 
@@ -840,7 +842,7 @@ class obs_hci(nrc_hci):
         self._planets.append(d)
 
 
-    def gen_planets_image(self, PA_offset=0, quick_PSF=True, use_cmask=False, wfe_drift=None, **kwargs):
+    def gen_planets_image(self, PA_offset=0, quick_PSF=True, use_cmask=False, wfe_drift=None, return_cons_and_psfs=False, **kwargs):
         """Create image of just planets.
 
         Use info stored in self.planets to create a noiseless slope image
@@ -873,6 +875,9 @@ class obs_hci(nrc_hci):
         image = np.zeros(image_shape)
         bar_offset = self.bar_offset
         bar_offpix = bar_offset / self.pixelscale
+        if (return_cons_and_psfs):
+            cons = []
+            psfs = []
         for pl in self.planets:
 
             # Create slope image (postage stamp) of planet
@@ -900,10 +905,18 @@ class obs_hci(nrc_hci):
             r, th = xy_to_rtheta(xoff_asec, yoff_asec)
             if quick_PSF:
                 psf_planet = self.gen_offset_psf(r, th, return_oversample=False)
+
+                if (return_cons_and_psfs):
+                    temp = shift(psf_planet.copy(), (0., -0.5), order=1, mode='constant', cval=0.)
+                    psfs += [temp[159-39:159+40, 159-39:159+40]]
+
                 obs = S.Observation(sp, self.bandpass, binset=self.bandpass.wave)
                 psf_planet *= obs.effstim('counts')
             else:
                 psf_planet = self.gen_offset_psf(r, th, sp=sp, return_oversample=False, wfe_drift=wfe_drift)
+
+            if (return_cons_and_psfs):
+                cons += [obs.effstim('counts')/self.star_flux()]
 
             # Expand to full size
             psf_planet = pad_or_cut_to_size(psf_planet, image_shape)
@@ -946,7 +959,10 @@ class obs_hci(nrc_hci):
             # Add to image
             image += psf_planet
 
-        return image
+        if (return_cons_and_psfs):
+            return image, np.array(cons), np.array(psfs)
+        else:
+            return image
 
     def kill_planets(self):
         """Remove planet info"""
@@ -1804,7 +1820,8 @@ class obs_hci(nrc_hci):
         # Stellar PSF doesn't rotate
         if im_star is None:
             if (dither is None):
-                im_star = self.gen_psf(sp, return_oversample=False, wfe_drift=wfe_drift)
+                # im_star = self.gen_psf(sp, return_oversample=False, wfe_drift=wfe_drift)
+                im_star = self.gen_offset_psf(0., 0., sp, return_oversample=False, wfe_drift=wfe_drift)
             else:
                 delx -= dither[0] / 1e3 / self.pixelscale # pix
                 dely += dither[1] / 1e3 / self.pixelscale # pix
